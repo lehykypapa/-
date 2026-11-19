@@ -1,0 +1,6 @@
+{
+  "name": "고구려 건국 탐험대: 주몽의 여정",
+  "description": "대한민국의 시작, 찬란한 고조선으로부터 & 고구려의 빛을 밝혀라 (제작자: 이현균선생님) - 초등 5학년 역사 2D 픽셀 탐험 롤플레잉 게임",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

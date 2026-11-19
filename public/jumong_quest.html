@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>고구려 건국 탐험대: 주몽의 여정 (초등 5학년 역사)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      background-color: #0f172a;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    }
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-between text-slate-100">
+
+  <!-- TOP HEADER -->
+  <header class="w-full bg-slate-900/95 border-b border-amber-500/40 px-4 py-2 flex items-center justify-between z-30 shadow-lg shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded text-xs md:text-sm tracking-wide">
+        단계 <span id="stageNum">1</span>/10
+      </div>
+      <div>
+        <h1 id="stageTitle" class="text-xs md:text-sm font-bold text-amber-300 truncate max-w-[200px] sm:max-w-md">
+          1단계: 신비한 알을 지켜라!
+        </h1>
+        <p id="stageLocation" class="text-[11px] text-slate-400">부여 유화부인의 처소</p>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="hidden sm:flex flex-col items-end w-40 md:w-60">
+      <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700">
+        <div id="progressBar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-2.5 transition-all duration-300" style="width: 10%"></div>
+      </div>
+      <span class="text-[10px] text-slate-400 mt-0.5">건국 진행도 <span id="progressPercent">10%</span></span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="soundBtn" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-300 cursor-pointer">
+        🔊 소리
+      </button>
+      <button id="guideBtn" class="px-2.5 py-1 text-xs bg-amber-600/80 hover:bg-amber-500 border border-amber-500 rounded text-white cursor-pointer font-bold">
+        📖 도움말
+      </button>
+    </div>
+  </header>
+
+  <!-- CANVAS MAIN CONTAINER -->
+  <main class="relative flex-1 w-full overflow-hidden flex items-center justify-center bg-slate-950">
+    <canvas id="gameCanvas" class="block w-full h-full max-w-full max-h-full"></canvas>
+
+    <!-- IN-CANVAS INTERACT BUTTON OVERLAY (MOBILE FRIENDLY) -->
+    <div id="interactPrompt" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 px-4 py-1.5 rounded-full font-bold text-sm shadow-xl animate-bounce border-2 border-white cursor-pointer pointer-events-auto">
+      💬 대화하기 (E 키 또는 터치)
+    </div>
+  </main>
+
+  <!-- BOTTOM TOUCH CONTROLS FOR TABLET / MOBILE -->
+  <nav class="w-full bg-slate-900/90 border-t border-slate-800 p-2 sm:p-3 flex items-center justify-between z-30 shrink-0 select-none">
+    <!-- Direction D-PAD -->
+    <div class="grid grid-cols-3 gap-1.5 w-36 h-28 sm:w-44 sm:h-32">
+      <div></div>
+      <button id="btnUp" class="bg-slate-800 active:bg-amber-500 active:text-slate-950 text-slate-200 border border-slate-700 rounded-lg font-bold flex items-center justify-center text-lg active:scale-95 shadow">
+        ▲
+      </button>
+      <div></div>
+      <button id="btnLeft" class="bg-slate-800 active:bg-amber-500 active:text-slate-950 text-slate-200 border border-slate-700 rounded-lg font-bold flex items-center justify-center text-lg active:scale-95 shadow">
+        ◀
+      </button>
+      <button id="btnDown" class="bg-slate-800 active:bg-amber-500 active:text-slate-950 text-slate-200 border border-slate-700 rounded-lg font-bold flex items-center justify-center text-lg active:scale-95 shadow">
+        ▼
+      </button>
+      <button id="btnRight" class="bg-slate-800 active:bg-amber-500 active:text-slate-950 text-slate-200 border border-slate-700 rounded-lg font-bold flex items-center justify-center text-lg active:scale-95 shadow">
+        ▶
+      </button>
+    </div>
+
+    <!-- Instructions / Status -->
+    <div class="text-center hidden md:block">
+      <p class="text-xs text-slate-300 font-medium">조작: [W/A/S/D] 또는 [방향키] 이동</p>
+      <p class="text-[11px] text-amber-400 mt-0.5">[E] 키 또는 [대화하기]로 퀴즈 풀기</p>
+    </div>
+
+    <!-- Action Button -->
+    <button id="btnAction" class="bg-gradient-to-r from-amber-500 to-amber-600 active:from-amber-400 active:to-amber-500 text-slate-950 font-black px-6 py-4 rounded-xl text-sm sm:text-base shadow-xl border-2 border-amber-300 active:scale-95 cursor-pointer">
+      대화하기 [E]
+    </button>
+  </nav>
+
+  <!-- QUIZ MODAL DIALOG -->
+  <div id="quizModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-3">
+    <div class="bg-slate-900 border-2 border-amber-500 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in flex flex-col">
+      <!-- Speaker Header -->
+      <div class="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-amber-500/30 px-5 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div id="modalNpcAvatar" class="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-lg font-black text-slate-950 shadow">
+            역
+          </div>
+          <div>
+            <h3 id="modalNpcName" class="text-base font-bold text-amber-300">유화부인</h3>
+            <p id="modalNpcRole" class="text-xs text-slate-400">주몽의 어머니</p>
+          </div>
+        </div>
+        <span class="text-xs px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded">
+          역사 탐구 퀴즈
+        </span>
+      </div>
+
+      <!-- Dialogue Story -->
+      <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+        <div class="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 text-slate-200 text-sm leading-relaxed" id="modalStory">
+          스토리 내용...
+        </div>
+
+        <div class="bg-amber-950/40 border-l-4 border-amber-400 p-3 rounded-r-lg">
+          <h4 id="modalQuestion" class="font-bold text-amber-200 text-sm sm:text-base leading-snug">
+            Q. 질문 내용이 들어갑니다.
+          </h4>
+        </div>
+
+        <!-- Choice Options -->
+        <div class="space-y-2.5 pt-1" id="optionsContainer">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAIL MODAL -->
+  <div id="failModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border-2 border-red-500 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl">
+      <div class="w-14 h-14 mx-auto rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-2xl font-black border-2 border-red-500 mb-3">
+        ✕
+      </div>
+      <h3 class="text-xl font-black text-red-400 mb-2">건국 실패!</h3>
+      <p id="failFeedback" class="text-slate-200 text-sm mb-4 leading-relaxed bg-slate-800/80 p-3 rounded-lg border border-red-500/30">
+        역사적 이유 설명...
+      </p>
+      <div class="bg-red-950/40 border border-red-800/50 p-3 rounded-lg text-xs text-red-200 text-left mb-5">
+        <strong>💡 역사 속 진실:</strong>
+        <span id="failHistoryLesson">설명</span>
+      </div>
+      <button id="retryBtn" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg transition active:scale-95 cursor-pointer">
+        다시 도전하기
+      </button>
+    </div>
+  </div>
+
+  <!-- VICTORY SUCCESS MODAL -->
+  <div id="victoryModal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-900 border-2 border-amber-400 rounded-2xl w-full max-w-xl p-6 text-center shadow-2xl my-auto">
+      <div class="w-16 h-16 mx-auto rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-3xl font-black border-2 border-amber-400 mb-3 animate-pulse">
+        👑
+      </div>
+      <h2 class="text-2xl font-black text-amber-300 mb-1">고구려 건국 성공!</h2>
+      <p class="text-xs text-amber-200/80 mb-4 font-medium">기원전 37년, 동명성왕 주몽이 위대한 고구려를 선포했습니다!</p>
+
+      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-4 text-left text-xs space-y-2 mb-5 max-h-56 overflow-y-auto">
+        <h4 class="font-bold text-amber-400 border-b border-slate-700 pb-1">📜 5학년 역사 수업 정리: 주몽의 고구려 건국</h4>
+        <p class="text-slate-300">1. <strong>난생 설화</strong>: 알에서 태어난 주몽은 신비한 천손(天孫) 혈통을 상징합니다.</p>
+        <p class="text-slate-300">2. <strong>뛰어난 활솜씨</strong>: 부여 말로 활을 잘 쏘는 자라는 뜻의 '주몽'이라 불렸습니다.</p>
+        <p class="text-slate-300">3. <strong>탈출과 세 벗</strong>: 오이, 마리, 협보와 함께 부여를 탈출해 남쪽으로 향했습니다.</p>
+        <p class="text-slate-300">4. <strong>어하자교 설화</strong>: 엄호수에서 물고기와 자라의 도움으로 기적적으로 강을 건넜습니다.</p>
+        <p class="text-slate-300">5. <strong>소서노와의 연대</strong>: 졸본의 소서노와 협력하여 험준한 산성을 수도로 삼았습니다.</p>
+        <p class="text-slate-300">6. <strong>자주적인 고구려</strong>: 700년 동안 동북아시아를 호령한 대제국의 초석을 놓았습니다.</p>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="restartBtn" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold rounded-xl cursor-pointer">
+          처음부터 다시하기
+        </button>
+        <button id="printBtn" class="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl shadow-lg cursor-pointer">
+          기록 인쇄/저장
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GUIDE HELP MODAL -->
+  <div id="helpModal" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-5 text-left text-xs space-y-3">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h3 class="font-bold text-sm text-amber-300">📖 고구려 건국 탐험대 안내</h3>
+        <button id="closeHelpBtn" class="text-slate-400 hover:text-white text-base font-bold cursor-pointer">✕</button>
+      </div>
+      <p class="text-slate-300 leading-relaxed">
+        주인공 <strong>주몽</strong>을 움직여 지도 속의 10개 장소를 순서대로 탐험하세요!
+      </p>
+      <div class="bg-slate-800 p-3 rounded-lg space-y-1.5">
+        <p class="text-amber-200 font-bold">🎮 조작 방법</p>
+        <p class="text-slate-300">• <strong>PC:</strong> W, A, S, D 또는 방향키로 이동, [E] 키로 상호작용</p>
+        <p class="text-slate-300">• <strong>태블릿/모바일:</strong> 하단 방향 버튼 및 [대화하기] 터치</p>
+        <p class="text-slate-300">• <strong>가이드 나침반:</strong> 우측 상단 나침반과 화살표가 다음 목표 위치를 알려줍니다.</p>
+      </div>
+      <p class="text-slate-400">초등학교 5학년 사회 1학기 [고구려의 성립과 발전] 단원과 연계된 역사 퀴즈 게임입니다.</p>
+    </div>
+  </div>
+
+  <script>
+    const STAGES = [
+      {
+        id: 1,
+        stageNumber: 1,
+        location: "부여 유화부인의 처소",
+        title: "신비한 알을 지켜라!",
+        subtitle: "1단계: 유화부인이 낳은 커다란 알",
+        npcName: "신비한 알 & 유화부인",
+        npcRole: "주몽의 어머니와 탄생의 알",
+        story: "하백의 딸 유화부인은 햇빛을 받아 커다란 알을 낳았습니다. 부여의 금와왕은 불길하다며 알을 개와 돼지, 말에게 주었으나 동물들이 모두 알을 밟지 않고 지켜주었습니다. 왕이 알을 돌려주자 유화부인은 깊은 고민에 빠졌습니다.",
+        question: "Q1. 유화부인은 신비한 알을 어떻게 다루어야 할까요?",
+        options: [
+          { text: "알을 따뜻한 곳에 소중히 감싸 안고 부화할 때를 기다린다.", isCorrect: true, feedback: "정답입니다! 유화부인이 알을 따뜻하게 보호하자 껍질이 깨지며 씩씩하고 비범한 사내아이 주몽이 태어났습니다." },
+          { text: "알에서 사람이 나오는 것은 불길하니 깊은 산속에 버린다.", isCorrect: false, feedback: "실패! 알을 버리면 훗날 고구려를 세울 영웅 주몽이 태어나지 못해요. 고대 건국 신화에서 알은 하늘의 신성한 생명을 상징합니다." }
+        ],
+        historyLesson: "고구려의 건국 시조 주몽은 알에서 태어났다는 '난생 설화(卵生說話)'를 지니고 있습니다.",
+        targetPos: { x: 12, y: 10 }
+      },
+      {
+        id: 2,
+        stageNumber: 2,
+        location: "부여 궁전 활터",
+        title: "백발백중 활솜씨를 보여라!",
+        subtitle: "2단계: 금와왕과 왕자들이 지켜보는 활터",
+        npcName: "부여 국왕 금와왕",
+        npcRole: "부여의 왕 & 활터 시험관",
+        story: "일곱 살 때부터 스스로 활과 화살을 만들어 쏘았다는 주몽! 부여에서는 활을 잘 쏘는 사람을 '주몽'이라 불렀습니다. 부여 궁전 활터에서 왕과 왕자들 앞에서 실력을 보일 기회가 찾아왔습니다.",
+        question: "Q2. 활터에 선 주몽은 어떻게 행동해야 할까요?",
+        options: [
+          { text: "화살 100발을 쏘아 모두 명중시키는 백발백중의 실력을 당당히 보여준다.", isCorrect: true, feedback: "정답입니다! 주몽은 백발백중의 솜씨로 백성들의 찬사를 받았습니다." },
+          { text: "왕자들의 질투가 두려우니 화살을 일부러 땅에 빗맞혀 실력을 숨긴다.", isCorrect: false, feedback: "실패! 주몽은 자신의 뛰어난 능력을 감추지 않고 당당하게 증명하여 영웅의 면모를 드러냈습니다." }
+        ],
+        historyLesson: "주몽(朱蒙)은 부여의 말로 '활을 잘 쏘는 사람'을 의미합니다.",
+        targetPos: { x: 22, y: 8 }
+      },
+      {
+        id: 3,
+        stageNumber: 3,
+        location: "유화부인의 비밀 방",
+        title: "어머니의 당부와 결심!",
+        subtitle: "3단계: 대소왕자의 시기와 탈출 결심",
+        npcName: "어머니 유화부인",
+        npcRole: "자애로운 어머니",
+        story: "주몽의 뛰어난 재주를 시기한 부여의 큰왕자 '대소'와 신하들이 주몽을 해치려 모의하고 있습니다. 이 사실을 눈치챈 어머니 유화부인이 주몽을 은밀히 불렀습니다.",
+        question: "Q3. 대소왕자의 위협 속에서 주몽은 어떤 선택을 해야 할까요?",
+        options: [
+          { text: "어머니의 뜻을 받들어 뜻을 품고 남쪽으로 탈출하여 새로운 나라를 꿈꾼다.", isCorrect: true, feedback: "정답입니다! 유화부인은 '큰 뜻을 품은 자가 남의 손에 죽을 수는 없다'며 남쪽으로 탈출할 것을 권유했습니다." },
+          { text: "대소왕자에게 무릎 꿇고 용서를 빌며 평생 비굴하게 비빈다.", isCorrect: false, feedback: "실패! 대소왕자의 시기심 앞에서 굴복하면 결국 목숨을 잃고 맙니다." }
+        ],
+        historyLesson: "대소왕자의 위협을 피해 탈출한 주몽의 이야기는 부여로부터 분리된 독자 세력의 형성을 반영합니다.",
+        targetPos: { x: 10, y: 16 }
+      },
+      {
+        id: 4,
+        stageNumber: 4,
+        location: "주막 / 저자거리",
+        title: "충직한 세 친구를 규합하라!",
+        subtitle: "4단계: 오이, 마리, 협보와의 만남",
+        npcName: "오이, 마리, 협보",
+        npcRole: "주몽의 의형제이자 개국 공신",
+        story: "부여를 빠져나오며 저자거리 주막에서 의기투합할 벗들을 만났습니다. 그들의 이름은 오이(烏伊), 마리(摩離), 협보(陝父)였습니다. 새로운 세상을 열기 위해 힘을 합쳐야 합니다.",
+        question: "Q4. 험난한 탈출 길에 주몽은 어떻게 해야 할까요?",
+        options: [
+          { text: "뜻을 같이하는 세 친구(오이, 마리, 협보)를 모아 함께 떠난다.", isCorrect: true, feedback: "정답입니다! 세 친구는 훗날 고구려를 세우는 데 가장 큰 공을 세운 충신이 되었습니다." },
+          { text: "비밀 유지를 위해 친구들을 남겨두고 혼자 외롭게 길을 떠난다.", isCorrect: false, feedback: "실패! 혼자만의 힘으로는 나라를 세울 수 없습니다." }
+        ],
+        historyLesson: "오이, 마리, 협보는 주몽과 함께 고구려를 건국한 핵심 삼총사입니다.",
+        targetPos: { x: 32, y: 16 }
+      },
+      {
+        id: 5,
+        stageNumber: 5,
+        location: "부여 국경 탈출로",
+        title: "부여 추격대를 따돌려라!",
+        subtitle: "5단계: 대소왕자 기마대의 맹렬한 추격",
+        npcName: "부여 기마 추격대",
+        npcRole: "대소왕자의 친위대",
+        story: "주몽 일행이 탈출했다는 소식을 들은 대소왕자가 수많은 철갑 기마병을 보내 바짝 뒤쫓아오고 있습니다! 말발굽 소리가 땅을 울립니다.",
+        question: "Q5. 부여 국경 길목에서 쫓아오는 추격대를 어떻게 따돌려야 할까요?",
+        options: [
+          { text: "뒤돌아보지 않고 말에 채찍질을 가하며 멈추지 않고 신속하게 달린다.", isCorrect: true, feedback: "정답입니다! 주몽 일행은 바람처럼 빠른 속도로 달려 국경을 무사히 통과했습니다." },
+          { text: "도망치기 귀찮으니 말에서 내려 추격대와 정면으로 맞서 싸운다.", isCorrect: false, feedback: "실패! 수백 명의 부여 정예 기마병과 4명이 정면 승부를 벌이면 포위되어 붙잡힙니다!" }
+        ],
+        historyLesson: "주몽의 탈출 과정은 위기를 벗어나는 고대 영웅의 지혜와 기동력을 보여줍니다.",
+        targetPos: { x: 48, y: 24 }
+      },
+      {
+        id: 6,
+        stageNumber: 6,
+        location: "엄호수 강가 (나루터)",
+        title: "하늘에 외쳐라!",
+        subtitle: "6단계: 앞길을 가로막은 거대한 강",
+        npcName: "엄호수 강가 표지판",
+        npcRole: "나루터 안내목",
+        story: "전속력으로 달렸으나 앞에는 넓고 푸른 '엄호수'가 가로막고 있었습니다. 배 한 척 없는 막다른 골목인데, 뒤에서는 부여 추격대의 함성이 가까워집니다!",
+        question: "Q6. 강가에 선 주몽은 채찍으로 물을 치며 무어라 외쳐야 할까요?",
+        options: [
+          { text: "'나는 천제(하늘의 신)의 아들이요, 하백(물의 신)의 외손이다! 나를 도우라!' 외친다.", isCorrect: true, feedback: "정답입니다! 주몽이 당당하게 천손임을 선포하자 기적이 일어납니다." },
+          { text: "더 이상 방법이 없으니 무작정 깊은 소용돌이 강물로 뛰어든다.", isCorrect: false, feedback: "실패! 거친 물살에 휩쓸려 건널 수 없게 됩니다." }
+        ],
+        historyLesson: "주몽은 해모수(하늘)와 유화(물)의 혈통을 지닌 천손(天孫) 사상을 상징합니다.",
+        targetPos: { x: 30, y: 32 }
+      },
+      {
+        id: 7,
+        stageNumber: 7,
+        location: "엄호수 물결 위 (기적의 다리)",
+        title: "자라와 물고기 다리를 건너라!",
+        subtitle: "7단계: 어하자교(魚鼈之橋)의 기적",
+        npcName: "물고기와 거대 자라",
+        npcRole: "물의 신 하백의 사자들",
+        story: "주몽의 부르짖음에 응답하여 강물 속에서 수만 마리의 물고기와 커다란 자라들이 솟구쳐 서로 등을 맞대어 긴 다리를 만들었습니다.",
+        question: "Q7. 물고기와 자라가 만든 신비한 다리 앞에서 주몽은 어떻게 해야 할까요?",
+        options: [
+          { text: "물고기와 자라들이 등을 맞대어 만들어 준 다리를 밟고 신속히 건넌다.", isCorrect: true, feedback: "정답입니다! 주몽 일행이 건너자마자 흩어져 추격대는 강을 건너지 못했습니다." },
+          { text: "미끄러워 보여 위험하니 강물이 완전히 마를 때까지 기다린다.", isCorrect: false, feedback: "실패! 기다리는 사이에 대소왕자의 추격대에게 붙잡히고 맙니다." }
+        ],
+        historyLesson: "물고기와 자라가 다리를 놓아주었다는 설화를 '어하자교(魚鼈之橋)'라고 부릅니다.",
+        targetPos: { x: 30, y: 36 }
+      },
+      {
+        id: 8,
+        stageNumber: 8,
+        location: "졸본 마을",
+        title: "현명한 소서노와의 동맹!",
+        subtitle: "8단계: 졸본 토착 세력과의 연대",
+        npcName: "소서노 (召西奴)",
+        npcRole: "졸본 연타발의 딸 & 여장부",
+        story: "엄호수를 건너 남쪽 졸본 땅에 도착한 주몽은 졸본의 유력 세력가 연타발의 딸인 지혜롭고 부유한 여걸 '소서노'를 만났습니다.",
+        question: "Q8. 새로운 터전에 안착하기 위해 소서노와 어떤 관계를 맺어야 할까요?",
+        options: [
+          { text: "소서노와 뜻을 합쳐 동맹과 혼인을 맺고 경제적·정치적 기반을 튼튼히 한다.", isCorrect: true, feedback: "정답입니다! 소서노의 풍부한 재력과 졸본 토착민의 지지를 얻었습니다." },
+          { text: "졸본 세력을 불신하고 다짜고짜 칼을 뽑아 무력 전쟁을 일으킨다.", isCorrect: false, feedback: "실패! 소서노와의 협력은 고구려 건국의 결정적 열쇠였습니다." }
+        ],
+        historyLesson: "소서노는 주몽을 도와 고구려를 건국하고 백제 건국에도 기여한 위대한 인물입니다.",
+        targetPos: { x: 18, y: 46 }
+      },
+      {
+        id: 9,
+        stageNumber: 9,
+        location: "오녀산성 입구 요새",
+        title: "천혜의 요새 졸본 산성을 수도로!",
+        subtitle: "9단계: 방어에 유리한 수도 선정",
+        npcName: "졸본 산성 수문장",
+        npcRole: "오녀산성 요새 지킴이",
+        story: "주몽과 소서노는 새 나라의 도읍을 정하고자 합니다. 주변에는 말갈 등 적대 세력과 부여의 위협이 상존하고 있습니다.",
+        question: "Q9. 고구려의 첫 번째 수도로 어떤 지형을 선택해야 할까요?",
+        options: [
+          { text: "깎아지른 절벽으로 둘러싸여 방어하기 유리한 험준한 졸본 산성(오녀산성)을 선택한다.", isCorrect: true, feedback: "정답입니다! 고구려는 험준한 산 위에 석성을 쌓아 방어에 유리한 요새를 수도로 삼았습니다." },
+          { text: "적이 사방에서 쉽게 쳐들어올 수 있는 방어벽 없는 평지를 수도로 정한다.", isCorrect: false, feedback: "실패! 초기 고구려는 외침을 막기 위해 험준한 산악 요새를 수도로 정해야 했습니다." }
+        ],
+        historyLesson: "고구려의 첫 도읍인 졸본 산성(오녀산성)은 해발 800m의 천혜 요새였습니다.",
+        targetPos: { x: 38, y: 48 }
+      },
+      {
+        id: 10,
+        stageNumber: 10,
+        location: "고구려 건국 제단",
+        title: "위대한 고구려의 탄생!",
+        subtitle: "10단계: 기원전 37년, 고구려 건국 선포",
+        npcName: "건국 제단 & 삼족오 깃발",
+        npcRole: "천제 봉헌단",
+        story: "마침내 기원전 37년, 오녀산성 정상의 제단에 백성들과 동지들이 모였습니다. 향불이 피어오르고 삼족오 깃발이 펄럭입니다. 주몽은 제단에 올랐습니다.",
+        question: "Q10. 제단에 오른 주몽은 백성들에게 무엇이라 선포해야 할까요?",
+        options: [
+          { text: "국호를 '고구려(高句麗)'로 당당히 선포하고 첫 번째 임금 동명성왕이 된다.", isCorrect: true, feedback: "정답입니다! 동명성왕 주몽은 기원전 37년 고구려를 건국하며 대제국의 서막을 열었습니다!" },
+          { text: "나라 세우기를 포기하고 부여에 다시 신하로 조공을 바치겠다고 선언한다.", isCorrect: false, feedback: "실패! 자주적인 고구려의 탄생을 눈앞에 두고 굴복할 수 없습니다!" }
+        ],
+        historyLesson: "기원전 37년 건국된 고구려는 700년 동안 동북아시아의 강대국으로 성장하였습니다.",
+        targetPos: { x: 50, y: 46 }
+      }
+    ];
+
+    const TILE_SIZE = 48;
+    const MAP_WIDTH = 64;
+    const MAP_HEIGHT = 56;
+    const TILES = { GRASS: 0, PATH: 1, WATER: 2, WALL: 3, TREE: 4, BRIDGE: 5, FLOOR: 6, MOUNTAIN: 7, FENCE: 8, CARPET: 9, STONE_PATH: 10 };
+
+    let currentStageId = 1;
+    let isAudioMuted = false;
+    let audioCtx = null;
+    let keys = { up: false, down: false, left: false, right: false };
+    let player = { x: 10 * TILE_SIZE, y: 10 * TILE_SIZE, width: 32, height: 32, speed: 3.5, dir: 'down', isMoving: false };
+
+    function getAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (isAudioMuted) return;
+      try {
+        const ctx = getAudio();
+        const now = ctx.currentTime;
+        if (type === 'step') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(130, now);
+          osc.frequency.exponentialRampToValueAtTime(60, now + 0.04);
+          gain.gain.setValueAtTime(0.03, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(); osc.stop(now + 0.04);
+        } else if (type === 'ding') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(659, now + 0.08);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(); osc.stop(now + 0.2);
+        } else if (type === 'correct') {
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(f, now + i * 0.08);
+            gain.gain.setValueAtTime(0.12, now + i * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.2);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.2);
+          });
+        } else if (type === 'wrong') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(90, now + 0.35);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(); osc.stop(now + 0.35);
+        } else if (type === 'victory') {
+          [523, 659, 783, 1046, 1318].forEach((f, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(f, now + i * 0.12);
+            gain.gain.setValueAtTime(0.15, now + i * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.3);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(now + i * 0.12); osc.stop(now + i * 0.12 + 0.3);
+          });
+        }
+      } catch (e) {}
+    }
+
+    function buildMap() {
+      const m = [];
+      for (let y = 0; y < MAP_HEIGHT; y++) {
+        const row = [];
+        for (let x = 0; x < MAP_WIDTH; x++) {
+          if (x === 0 || x === MAP_WIDTH - 1 || y === 0 || y === MAP_HEIGHT - 1) {
+            row.push(TILES.TREE); continue;
+          }
+          if (y >= 31 && y <= 35) {
+            if (x === 29 || x === 30) row.push(TILES.BRIDGE);
+            else row.push(TILES.WATER);
+            continue;
+          }
+          if (x >= 4 && x <= 24 && y >= 3 && y <= 18) {
+            if ((y === 4 || y === 12) && x >= 5 && x <= 17) {
+              row.push(x === 11 ? TILES.FLOOR : TILES.WALL); continue;
+            }
+            if ((x === 5 || x === 17) && y >= 4 && y <= 12) {
+              row.push(TILES.WALL); continue;
+            }
+            if (x > 5 && x < 17 && y > 4 && y < 12) {
+              row.push(x >= 9 && x <= 13 ? TILES.CARPET : TILES.FLOOR); continue;
+            }
+            if (x >= 19 && x <= 24 && y >= 5 && y <= 12) {
+              row.push((y === 5 || y === 12) ? TILES.FENCE : TILES.PATH); continue;
+            }
+          }
+          if ((y === 13 && x >= 11 && x <= 40) || (x === 30 && y >= 13 && y <= 31)) {
+            row.push(TILES.PATH); continue;
+          }
+          if ((y === 18 && x >= 40 && x <= 52) || (x === 52 && y >= 18 && y <= 26) || (y === 26 && x >= 30 && x <= 52)) {
+            row.push(TILES.STONE_PATH); continue;
+          }
+          if ((y === 42 && x >= 12 && x <= 30) || (x === 18 && y >= 36 && y <= 50) || (y === 46 && x >= 30 && x <= 52)) {
+            row.push(TILES.PATH); continue;
+          }
+          if ((x === 36 || x === 58) && y >= 38 && y <= 52) {
+            row.push(TILES.MOUNTAIN); continue;
+          }
+          if ((y === 38 || y === 52) && x >= 36 && x <= 58) {
+            row.push(TILES.MOUNTAIN); continue;
+          }
+          if ((x * 11 + y * 19) % 23 === 0 && x > 2 && y > 2 && x < MAP_WIDTH - 2 && y < MAP_HEIGHT - 2) {
+            row.push(TILES.TREE);
+          } else {
+            row.push(TILES.GRASS);
+          }
+        }
+        m.push(row);
+      }
+      return m;
+    }
+
+    const map = buildMap();
+
+    function isSolid(tx, ty) {
+      if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return true;
+      const t = map[ty][tx];
+      if (t === TILES.WATER) return true;
+      if (t === TILES.BRIDGE) return currentStageId < 7;
+      if (t === TILES.WALL || t === TILES.TREE || t === TILES.MOUNTAIN || t === TILES.FENCE) return true;
+      return false;
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function isNearTarget() {
+      const stage = STAGES.find(s => s.id === currentStageId);
+      if (!stage) return false;
+      const tX = stage.targetPos.x * TILE_SIZE + TILE_SIZE / 2;
+      const tY = stage.targetPos.y * TILE_SIZE + TILE_SIZE / 2;
+      const pX = player.x + player.width / 2;
+      const pY = player.y + player.height / 2;
+      return Math.hypot(tX - pX, tY - pY) < 68;
+    }
+
+    function tryInteract() {
+      if (isNearTarget()) {
+        playSound('ding');
+        openQuizModal();
+      }
+    }
+
+    function updateTopBar() {
+      const stage = STAGES.find(s => s.id === currentStageId) || STAGES[STAGES.length - 1];
+      document.getElementById('stageNum').textContent = stage.id;
+      document.getElementById('stageTitle').textContent = stage.title;
+      document.getElementById('stageLocation').textContent = stage.location;
+      const pct = (stage.id / 10) * 100;
+      document.getElementById('progressBar').style.width = pct + '%';
+      document.getElementById('progressPercent').textContent = pct + '%';
+    }
+
+    function openQuizModal() {
+      const stage = STAGES.find(s => s.id === currentStageId);
+      if (!stage) return;
+      document.getElementById('modalNpcName').textContent = stage.npcName;
+      document.getElementById('modalNpcRole').textContent = stage.npcRole;
+      document.getElementById('modalStory').textContent = stage.story;
+      document.getElementById('modalQuestion').textContent = stage.question;
+
+      const container = document.getElementById('optionsContainer');
+      container.innerHTML = '';
+
+      stage.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left p-3.5 rounded-xl border border-slate-700 bg-slate-800/90 hover:bg-amber-500/20 hover:border-amber-400 text-slate-100 text-sm font-medium transition cursor-pointer flex items-start gap-2.5';
+        btn.innerHTML = '<span class="bg-amber-500 text-slate-950 text-xs font-black px-2 py-0.5 rounded shrink-0">' + (idx + 1) + '</span> <span>' + opt.text + '</span>';
+        btn.onclick = () => selectOption(opt);
+        container.appendChild(btn);
+      });
+
+      document.getElementById('quizModal').classList.remove('hidden');
+    }
+
+    function selectOption(opt) {
+      document.getElementById('quizModal').classList.add('hidden');
+      const stage = STAGES.find(s => s.id === currentStageId);
+
+      if (opt.isCorrect) {
+        playSound('correct');
+        if (currentStageId < 10) {
+          currentStageId++;
+          updateTopBar();
+        } else {
+          playSound('victory');
+          document.getElementById('victoryModal').classList.remove('hidden');
+        }
+      } else {
+        playSound('wrong');
+        document.getElementById('failFeedback').textContent = opt.feedback;
+        document.getElementById('failHistoryLesson').textContent = stage.historyLesson;
+        document.getElementById('failModal').classList.remove('hidden');
+      }
+    }
+
+    window.addEventListener('keydown', e => {
+      if (['ArrowUp', 'KeyW'].includes(e.code)) keys.up = true;
+      if (['ArrowDown', 'KeyS'].includes(e.code)) keys.down = true;
+      if (['ArrowLeft', 'KeyA'].includes(e.code)) keys.left = true;
+      if (['ArrowRight', 'KeyD'].includes(e.code)) keys.right = true;
+      if (['KeyE', 'Space', 'Enter'].includes(e.code)) tryInteract();
+    });
+
+    window.addEventListener('keyup', e => {
+      if (['ArrowUp', 'KeyW'].includes(e.code)) keys.up = false;
+      if (['ArrowDown', 'KeyS'].includes(e.code)) keys.down = false;
+      if (['ArrowLeft', 'KeyA'].includes(e.code)) keys.left = false;
+      if (['ArrowRight', 'KeyD'].includes(e.code)) keys.right = false;
+    });
+
+    function bindBtn(id, dir) {
+      const el = document.getElementById(id);
+      const press = e => { e.preventDefault(); keys[dir] = true; };
+      const release = e => { e.preventDefault(); keys[dir] = false; };
+      el.addEventListener('pointerdown', press);
+      el.addEventListener('pointerup', release);
+      el.addEventListener('pointercancel', release);
+    }
+    bindBtn('btnUp', 'up');
+    bindBtn('btnDown', 'down');
+    bindBtn('btnLeft', 'left');
+    bindBtn('btnRight', 'right');
+
+    document.getElementById('btnAction').onclick = tryInteract;
+    document.getElementById('interactPrompt').onclick = tryInteract;
+    document.getElementById('retryBtn').onclick = () => document.getElementById('failModal').classList.add('hidden');
+    document.getElementById('restartBtn').onclick = () => {
+      currentStageId = 1;
+      player.x = 10 * TILE_SIZE;
+      player.y = 10 * TILE_SIZE;
+      updateTopBar();
+      document.getElementById('victoryModal').classList.add('hidden');
+    };
+    document.getElementById('printBtn').onclick = () => window.print();
+    document.getElementById('soundBtn').onclick = () => {
+      isAudioMuted = !isAudioMuted;
+      document.getElementById('soundBtn').textContent = isAudioMuted ? '🔇 음소거' : '🔊 소리';
+    };
+    document.getElementById('guideBtn').onclick = () => document.getElementById('helpModal').classList.remove('hidden');
+    document.getElementById('closeHelpBtn').onclick = () => document.getElementById('helpModal').classList.add('hidden');
+
+    let lastTime = performance.now();
+
+    function gameLoop(now) {
+      lastTime = now;
+      let dx = 0, dy = 0;
+      if (keys.up) { dy -= 1; player.dir = 'up'; }
+      if (keys.down) { dy += 1; player.dir = 'down'; }
+      if (keys.left) { dx -= 1; player.dir = 'left'; }
+      if (keys.right) { dx += 1; player.dir = 'right'; }
+
+      player.isMoving = dx !== 0 || dy !== 0;
+
+      if (player.isMoving) {
+        const len = Math.hypot(dx, dy) || 1;
+        const moveX = (dx / len) * player.speed;
+        const moveY = (dy / len) * player.speed;
+
+        const nextX = player.x + moveX;
+        const tX1 = Math.floor(nextX / TILE_SIZE);
+        const tX2 = Math.floor((nextX + player.width) / TILE_SIZE);
+        const tY1 = Math.floor(player.y / TILE_SIZE);
+        const tY2 = Math.floor((player.y + player.height) / TILE_SIZE);
+
+        if (!isSolid(tX1, tY1) && !isSolid(tX2, tY1) && !isSolid(tX1, tY2) && !isSolid(tX2, tY2)) {
+          player.x = nextX;
+        }
+
+        const nextY = player.y + moveY;
+        const nyX1 = Math.floor(player.x / TILE_SIZE);
+        const nyX2 = Math.floor((player.x + player.width) / TILE_SIZE);
+        const nyY1 = Math.floor(nextY / TILE_SIZE);
+        const nyY2 = Math.floor((nextY + player.height) / TILE_SIZE);
+
+        if (!isSolid(nyX1, nyY1) && !isSolid(nyX2, nyY1) && !isSolid(nyX1, nyY2) && !isSolid(nyX2, nyY2)) {
+          player.y = nextY;
+        }
+      }
+
+      const near = isNearTarget();
+      const promptEl = document.getElementById('interactPrompt');
+      if (near && document.getElementById('quizModal').classList.contains('hidden') && document.getElementById('failModal').classList.contains('hidden')) {
+        promptEl.classList.remove('hidden');
+      } else {
+        promptEl.classList.add('hidden');
+      }
+
+      renderWorld(now);
+      requestAnimationFrame(gameLoop);
+    }
+
+    function renderWorld(now) {
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const camX = Math.max(0, Math.min(MAP_WIDTH * TILE_SIZE - canvas.width, player.x + player.width / 2 - canvas.width / 2));
+      const camY = Math.max(0, Math.min(MAP_HEIGHT * TILE_SIZE - canvas.height, player.y + player.height / 2 - canvas.height / 2));
+
+      ctx.save();
+      ctx.translate(-camX, -camY);
+
+      const sx = Math.max(0, Math.floor(camX / TILE_SIZE));
+      const ex = Math.min(MAP_WIDTH, Math.ceil((camX + canvas.width) / TILE_SIZE) + 1);
+      const sy = Math.max(0, Math.floor(camY / TILE_SIZE));
+      const ey = Math.min(MAP_HEIGHT, Math.ceil((camY + canvas.height) / TILE_SIZE) + 1);
+
+      for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+          const t = map[y][x];
+          const px = x * TILE_SIZE;
+          const py = y * TILE_SIZE;
+          if (t === TILES.GRASS) {
+            ctx.fillStyle = (x + y) % 2 === 0 ? '#4ade80' : '#22c55e';
+            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          } else if (t === TILES.PATH) {
+            ctx.fillStyle = '#fde047'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          } else if (t === TILES.STONE_PATH) {
+            ctx.fillStyle = '#94a3b8'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          } else if (t === TILES.WATER) {
+            ctx.fillStyle = '#0284c7'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#38bdf8'; ctx.fillRect(px + 6, py + 16, 16, 3);
+          } else if (t === TILES.BRIDGE) {
+            if (currentStageId >= 7) {
+              ctx.fillStyle = '#059669'; ctx.beginPath();
+              ctx.arc(px + 24, py + 24, 18, 0, Math.PI * 2); ctx.fill();
+            } else {
+              ctx.fillStyle = '#0369a1'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+            }
+          } else if (t === TILES.FLOOR) {
+            ctx.fillStyle = '#d97706'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          } else if (t === TILES.CARPET) {
+            ctx.fillStyle = '#b91c1c'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          } else if (t === TILES.WALL) {
+            ctx.fillStyle = '#475569'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          } else if (t === TILES.MOUNTAIN) {
+            ctx.fillStyle = '#52525b'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          } else if (t === TILES.FENCE) {
+            ctx.fillStyle = '#86efac'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#78350f'; ctx.fillRect(px + 6, py + 12, 6, 28);
+          } else if (t === TILES.TREE) {
+            ctx.fillStyle = '#22c55e'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#78350f'; ctx.fillRect(px + 18, py + 24, 12, 22);
+            ctx.fillStyle = '#15803d'; ctx.beginPath();
+            ctx.arc(px + 24, py + 18, 18, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+
+      // Target marker
+      const activeStage = STAGES.find(s => s.id === currentStageId);
+      if (activeStage) {
+        const tPx = activeStage.targetPos.x * TILE_SIZE + 24;
+        const tPy = activeStage.targetPos.y * TILE_SIZE + 24;
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(tPx, tPy, 24 + Math.sin(now * 0.005) * 5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(tPx, tPy - 32 + Math.sin(now * 0.008) * 4, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', tPx, tPy - 27 + Math.sin(now * 0.008) * 4);
+      }
+
+      // Player
+      const cx = player.x + player.width / 2;
+      const cy = player.y + player.height / 2;
+      const bob = player.isMoving ? Math.sin(now * 0.015) * 2 : 0;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath(); ctx.ellipse(cx, cy + 14, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#1e3a8a';
+      ctx.fillRect(cx - 7, cy - 2 + bob, 14, 14);
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(cx - 7, cy + 3 + bob, 14, 3);
+
+      ctx.fillStyle = '#fed7aa';
+      ctx.beginPath(); ctx.arc(cx, cy - 8 + bob, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(cx - 2, cy - 18 + bob, 4, 8);
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+      ctx.fillRect(cx - 16, cy - 32 + bob, 32, 12);
+      ctx.fillStyle = '#fef08a';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('주몽', cx, cy - 23 + bob);
+
+      ctx.restore();
+    }
+
+    updateTopBar();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>

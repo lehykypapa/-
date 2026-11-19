@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  #game-topbar,
+  #game-intro-overlay,
+  #touch-controls,
+  canvas,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  #worksheet-modal-backdrop {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  #worksheet-modal-container {
+    border: none !important;
+    box-shadow: none !important;
+    max-height: none !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+  }
+
+  #printable-worksheet-content {
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+}
